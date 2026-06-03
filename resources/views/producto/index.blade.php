@@ -76,7 +76,7 @@
                                             <td>{{ $producto->categoria->nombre }}</td>
 
                                             <td>
-                                                {!! QrCode::size(75)->generate($producto->nombre) !!}
+                                                {{-- {!! QrCode::size(75)->generate($producto->nombre) !!} --}}
                                             </td>
 
                                             <td>
