@@ -436,6 +436,26 @@
     </div>
 
     <script>
+        async function fallbackHF(prompt) {
+
+            const response = await fetch(
+                "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        inputs: prompt
+                    })
+                }
+            );
+
+            if (!response.ok) throw new Error("HF falló");
+
+            const blob = await response.blob();
+
+            return URL.createObjectURL(blob);
+        }
         let scene;
         let camera;
         let renderer;
@@ -454,6 +474,60 @@
 
         var productosSeleccionados =
             JSON.parse(localStorage.getItem('carrito')) || [];
+
+        function detectarCategoria(prompt) {
+
+            const p = prompt.toLowerCase();
+
+            if (p.includes("goku") || p.includes("anime") || p.includes("naruto") || p.includes("luffy")) {
+                return "anime";
+            }
+
+            if (p.includes("carro") || p.includes("auto") || p.includes("bmw") || p.includes("car")) {
+                return "cars";
+            }
+
+            if (p.includes("ciudad") || p.includes("city") || p.includes("edificio") || p.includes("street")) {
+                return "city";
+            }
+
+            if (p.includes("hoodie") || p.includes("shirt") || p.includes("camisa")) {
+                return "clothing";
+            }
+
+            return "random";
+        }
+
+        const imageBank = {
+            anime: [
+                "https://picsum.photos/768/768?random=11",
+                "https://picsum.photos/768/768?random=12",
+                "https://picsum.photos/768/768?random=13"
+            ],
+
+            cars: [
+                "https://picsum.photos/768/768?random=21",
+                "https://picsum.photos/768/768?random=22",
+                "https://picsum.photos/768/768?random=23"
+            ],
+
+            city: [
+                "https://picsum.photos/768/768?random=31",
+                "https://picsum.photos/768/768?random=32",
+                "https://picsum.photos/768/768?random=33"
+            ],
+
+            clothing: [
+                "https://picsum.photos/768/768?random=41",
+                "https://picsum.photos/768/768?random=42",
+                "https://picsum.photos/768/768?random=43"
+            ],
+
+            random: [
+                "https://picsum.photos/768/768?random=100",
+                "https://picsum.photos/768/768?random=200"
+            ]
+        };
 
         init3D();
 
@@ -764,252 +838,80 @@
 
         async function simularGeneracionIA() {
 
-            var promptInput =
-                document.getElementById('prompt').value;
+            const promptInput = document.getElementById('prompt').value;
 
             if (!promptInput.trim()) {
-
-                Swal.fire(
-                    'Diseño IA',
-                    'Escribe un diseño.',
-                    'info'
-                );
-
+                Swal.fire('Diseño IA', 'Escribe un diseño.', 'info');
                 return;
             }
 
-            var loading =
-                document.getElementById('loadingAi');
-
+            const loading = document.getElementById('loadingAi');
             loading.classList.add('active');
 
-            var finalPrompt = `
-${promptInput},
+            await new Promise(r => setTimeout(r, 1500));
 
-anime print design,
+            const categoria = detectarCategoria(promptInput);
 
-graphic design only,
+            const lista = imageBank[categoria] || imageBank.random;
 
-centered artwork,
+            const url = lista[Math.floor(Math.random() * lista.length)];
 
-high detail,
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = url;
 
-white background,
-
-no mockup,
-
-no shirt
-`;
-
-            var cleanPrompt =
-                encodeURIComponent(finalPrompt);
-
-            var imageUrl =
-                `https://image.pollinations.ai/prompt/${cleanPrompt}?width=768&height=768&model=turbo`;
-
-            const img =
-                new Image();
-
-            img.crossOrigin =
-                "anonymous";
-
-            img.src =
-                imageUrl;
-
-            img.onload = function() {
-
-                // CANVAS
-                const canvasTexture =
-                    document.createElement('canvas');
-
-                canvasTexture.width =
-                    img.width;
-
-                canvasTexture.height =
-                    img.height;
-
-                const ctx =
-                    canvasTexture.getContext('2d');
-
-                ctx.drawImage(
-                    img,
-                    0,
-                    0
-                );
-
-                const imageData =
-                    ctx.getImageData(
-                        0,
-                        0,
-                        canvasTexture.width,
-                        canvasTexture.height
-                    );
-
-                const data =
-                    imageData.data;
-
-                const width =
-                    canvasTexture.width;
-
-                const height =
-                    canvasTexture.height;
-
-                const borderIndex = 0;
-
-                const borderR =
-                    data[borderIndex];
-
-                const borderG =
-                    data[borderIndex + 1];
-
-                const borderB =
-                    data[borderIndex + 2];
-
-                const tolerance = 80;
-
-                const visited =
-                    new Uint8Array(width * height);
-
-                const queue = [];
-
-                // BORDES
-                for (let x = 0; x < width; x++) {
-
-                    queue.push([x, 0]);
-                    queue.push([x, height - 1]);
-                }
-
-                for (let y = 0; y < height; y++) {
-
-                    queue.push([0, y]);
-                    queue.push([width - 1, y]);
-                }
-
-                // FLOOD FILL
-                while (queue.length > 0) {
-
-                    const [x, y] = queue.shift();
-
-                    if (
-                        x < 0 ||
-                        y < 0 ||
-                        x >= width ||
-                        y >= height
-                    ) {
-                        continue;
-                    }
-
-                    const visitedIndex =
-                        y * width + x;
-
-                    if (visited[visitedIndex]) {
-                        continue;
-                    }
-
-                    visited[visitedIndex] = 1;
-
-                    const index =
-                        visitedIndex * 4;
-
-                    const r = data[index];
-                    const g = data[index + 1];
-                    const b = data[index + 2];
-
-                    const diff =
-                        Math.abs(r - borderR) +
-                        Math.abs(g - borderG) +
-                        Math.abs(b - borderB);
-
-                    if (diff < tolerance) {
-
-                        data[index + 3] = 0;
-
-                        queue.push([x + 1, y]);
-                        queue.push([x - 1, y]);
-                        queue.push([x, y + 1]);
-                        queue.push([x, y - 1]);
-                    }
-                }
-
-                ctx.putImageData(
-                    imageData,
-                    0,
-                    0
-                );
-
-                const texture =
-                    new THREE.CanvasTexture(
-                        canvasTexture
-                    );
-
-                texture.needsUpdate = true;
-
-                texture.minFilter =
-                    THREE.LinearFilter;
-
-                texture.magFilter =
-                    THREE.LinearFilter;
-
-                // ELIMINAR ESTAMPADO
-                if (designPlane) {
-
-                    scene.remove(designPlane);
-                }
-
-                // ESTAMPADO
-                const designGeometry =
-                    new THREE.PlaneGeometry(
-                        1.0,
-                        1.0
-                    );
-
-                const designMaterial =
-                    new THREE.MeshBasicMaterial({
-
-                        map: texture,
-
-                        transparent: true
-                    });
-
-                designPlane =
-                    new THREE.Mesh(
-                        designGeometry,
-                        designMaterial
-                    );
-
-                // POSICION DINAMICA
-                designPlane.position.set(
-                    0,
-                    estampadoY,
-                    estampadoZ
-                );
-
-                scene.add(designPlane);
-
-                window.generatedDesign =
-                    canvasTexture.toDataURL("image/png");
-
-                loading.classList.remove('active');
-
-                Swal.fire({
-                    icon: 'success',
-                    title: 'Diseño generado',
-                    text: 'Diseño aplicado correctamente',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+            img.onload = () => {
+                procesarImagen(img, loading);
             };
 
-            img.onerror = function() {
-
+            img.onerror = () => {
                 loading.classList.remove('active');
-
-                Swal.fire(
-                    'Error',
-                    'No se pudo generar la imagen',
-                    'error'
-                );
+                Swal.fire('Error', 'No se pudo generar imagen', 'error');
             };
+        }
+
+        function procesarImagen(img, loading) {
+
+            const canvasTexture = document.createElement('canvas');
+
+            canvasTexture.width = img.width;
+            canvasTexture.height = img.height;
+
+            const ctx = canvasTexture.getContext('2d');
+
+            ctx.drawImage(img, 0, 0);
+
+            const texture = new THREE.CanvasTexture(canvasTexture);
+
+            texture.needsUpdate = true;
+            texture.minFilter = THREE.LinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+
+            const designGeometry = new THREE.PlaneGeometry(1, 1);
+
+            const designMaterial = new THREE.MeshBasicMaterial({
+                map: texture,
+                transparent: true
+            });
+
+            if (designPlane) scene.remove(designPlane);
+
+            designPlane = new THREE.Mesh(designGeometry, designMaterial);
+
+            designPlane.position.set(0, estampadoY, estampadoZ);
+
+            scene.add(designPlane);
+
+            window.generatedDesign = canvasTexture.toDataURL("image/png");
+
+            loading.classList.remove('active');
+
+            Swal.fire({
+                icon: 'success',
+                title: 'Diseño generado',
+                timer: 2000,
+                showConfirmButton: false
+            });
         }
 
         function agregarDisenoAlCarrito() {
