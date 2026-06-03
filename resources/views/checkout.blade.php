@@ -282,7 +282,7 @@
                     const cantidadARestar = parseInt(document.getElementById('cantidad_restar').value);
                     if (isNaN(cantidadARestar) || cantidadARestar < 1 || cantidadARestar > producto.cantidad) {
                         Swal.showValidationMessage(
-                        `Por favor ingresa un número entre 1 y ${producto.cantidad}`);
+                            `Por favor ingresa un número entre 1 y ${producto.cantidad}`);
                     }
                     return cantidadARestar;
                 }
@@ -332,23 +332,100 @@
                     <ul class="checkout-item-list" style="list-style: none; padding: 0; margin: 0;">`;
 
                 carrito.forEach(function(producto, index) {
-                    var imagenSrc = producto.imagen ? producto.imagen : '/img/default-shirt.png';
+
+                    let nombrePrenda =
+                        producto.tipoPrenda || 'Prenda';
+
+                    if (nombrePrenda === 'premium cotton t-shirt') {
+                        nombrePrenda = 'Camisa Premium';
+                    }
+
+                    if (nombrePrenda === 'black hoodie') {
+                        nombrePrenda = 'Hoodie';
+                    }
+
+                    var imagenSrc =
+                        producto.imagen
+                            ? producto.imagen
+                            : '/img/default-shirt.png';
 
                     carritoHTML += `
                     <li class="checkout-item" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; padding: 10px; background: #1e293b; border-radius: 8px;">
+
                         <div style="display: flex; align-items: center; gap: 15px;">
-                            <img src="${imagenSrc}" alt="Prenda IA" style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid #334155;">
+
+                            <img
+                                src="${imagenSrc}"
+                                alt="Prenda IA"
+                                style="width: 70px; height: 70px; object-fit: cover; border-radius: 8px; border: 1px solid #334155;"
+                            >
+
                             <div class="checkout-item-details">
-                                <h4 style="margin: 0 0 5px 0; font-size: 15px; color: #ffffff;">${producto.nombre}</h4>
-                                <p style="margin: 0 0 5px 0; font-size: 13px; color: #94a3b8;">Cantidad: ${producto.cantidad}</p>
-                                <button class="btn-delete-item" onclick="eliminarProducto(${index})" style="background: none; border: none; color: #ef4444; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 6px; padding: 0;">
-                                    <i class="fas fa-minus-circle"></i> Ajustar cantidad
+
+                                <h4 style="margin:0 0 5px 0; font-size:15px; color:#ffffff;">
+                                    ${nombrePrenda} - ${producto.talla || 'N/A'}
+                                </h4>
+
+                                <p style="margin:0 0 4px 0; font-size:13px; color:#94a3b8;">
+                                    Tipo: ${nombrePrenda}
+                                </p>
+
+                                <p style="margin:0 0 4px 0; font-size:13px; color:#94a3b8;">
+                                    Talla: ${producto.talla || 'N/A'}
+                                </p>
+
+                                <p style="margin:0 0 4px 0; font-size:13px; color:#94a3b8;">
+                                    Cantidad: ${producto.cantidad}
+                                </p>
+
+                                <p style="display:flex;align-items:center;gap:8px;margin:0 0 6px 0;font-size:13px;color:#94a3b8;">
+                                    Color:
+
+                                    <span style="
+                                        width:18px;
+                                        height:18px;
+                                        border-radius:50%;
+                                        display:inline-block;
+                                        background:${producto.color || '#64748b'};
+                                        border:1px solid #64748b;
+                                    "></span>
+
+                                </p>
+
+                                ${
+                                    producto.prompt
+                                    ?
+                                    `<p style="
+                                        font-size:11px;
+                                        color:#64748b;
+                                        margin:0 0 8px 0;
+                                        max-width:250px;
+                                        overflow:hidden;
+                                        text-overflow:ellipsis;
+                                        white-space:nowrap;
+                                    ">
+                                        ${producto.prompt}
+                                    </p>`
+                                    : ''
+                                }
+
+                                <button
+                                    class="btn-delete-item"
+                                    onclick="eliminarProducto(${index})"
+                                    style="background:none; border:none; color:#ef4444; font-size:13px; cursor:pointer; display:flex; align-items:center; gap:6px; padding:0;"
+                                >
+                                    <i class="fas fa-minus-circle"></i>
+                                    Ajustar cantidad
                                 </button>
+
                             </div>
+
                         </div>
-                        <div class="checkout-item-price" style="font-weight: 700; color: #38bdf8; font-size: 16px;">
+
+                        <div class="checkout-item-price" style="font-weight:700; color:#38bdf8; font-size:16px;">
                             $${(producto.precio * producto.cantidad).toFixed(2)}
                         </div>
+
                     </li>`;
                 });
 
@@ -425,50 +502,78 @@
                 e.preventDefault();
 
                 Swal.fire({
-                    title: 'Procesando diseño...',
-                    text: 'Guardando el archivo plano PNG en el servidor local para la estampadora.',
+                    title: 'Asegurando tus diseños...',
+                    text: 'Guardando los archivos planos PNG en el servidor local para la estampadora.',
                     allowOutsideClick: false,
                     didOpen: () => {
                         Swal.showLoading();
                     }
                 });
 
-                var primerProducto = carrito[0]; // Corregido el índice del array
+                // Creamos una lista de peticiones Fetch (promesas) para procesar todos los productos del carrito
+                var peticionesDescarga = carrito.map(function(producto, index) {
+                    // Si el producto no tiene prompt (es un producto normal de la tienda), saltamos la descarga
+                    if (!producto.prompt) return Promise.resolve(null);
 
-                fetch("{{ route('guardar.estampado.local') }}", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "X-CSRF-TOKEN": "{{ csrf_token() }}"
-                        },
-                        body: JSON.stringify({
-                            url_imagen: primerProducto.imagen
+                    // Construimos el prompt aislado para obtener solo el logo plano
+                    var promptAislado =
+                        `centered print graphic design of: ${producto.prompt}, isolated, high definition vector asset, screen printing style, flat background`;
+                    var cleanPrompt = encodeURIComponent(promptAislado);
+                    var urlLogoPuro =
+                        `https://image.pollinations.ai/prompt/${cleanPrompt}?model=turbo&width=512&height=512`;
+
+                    // Retornamos la promesa del fetch hacia Laravel
+                    return fetch("{{ route('guardar.estampado.local') }}", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+                            },
+                            body: JSON.stringify({
+                                url_imagen: urlLogoPuro
+                            })
                         })
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            carrito[0].imagen = data.url_local; // Corregido el índice del array
-                            localStorage.setItem('carrito', JSON.stringify(carrito));
-                            document.getElementById('carrito-input').value = JSON.stringify(carrito);
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Guardamos la ruta local de Laragon exactamente en este producto
+                                return {
+                                    index: index,
+                                    url_local: data.url_local
+                                };
+                            }
+                            return null;
+                        })
+                        .catch(error => {
+                            console.error("Error descargando producto " + index, error);
+                            return null;
+                        });
+                });
 
-                            Swal.fire({
-                                icon: 'success',
-                                title: '¡Diseño Asegurado!',
-                                text: 'Imagen descargada localmente en public/storage/estampados/',
-                                timer: 2000,
-                                showConfirmButton: false
-                            }).then(() => {
-                                e.target.submit();
-                            });
-                        } else {
-                            Swal.fire('Error', 'No se pudo almacenar la imagen localmente.', 'error');
+                // Ejecutamos todas las descargas en paralelo de forma segura
+                Promise.all(peticionesDescarga).then(resultados => {
+                    // Recorremos los resultados y actualizamos el carrito localmente
+                    resultados.forEach(res => {
+                        if (res !== null) {
+                            carrito[res.index].imagen = res.url_local;
                         }
-                    })
-                    .catch(error => {
-                        console.error(error);
-                        Swal.fire('Error', 'Ocurrió un problema en el servidor.', 'error');
                     });
+
+                    // Sincronizamos los cambios definitivos en el LocalStorage y en el input oculto para PayPal
+                    localStorage.setItem('carrito', JSON.stringify(carrito));
+                    document.getElementById('carrito-input').value = JSON.stringify(carrito);
+
+                    Swal.fire({
+                        icon: 'success',
+                        title: '¡Diseños Asegurados!',
+                        text: 'Todos los estampados fueron guardados en public/storage/estampados/',
+                        timer: 2000,
+                        showConfirmButton: false
+                    }).then(() => {
+                        // Ahora que todo el carrito está actualizado con sus imágenes locales, enviamos a PayPal
+                        e.target.submit();
+                    });
+                });
             }
         });
 

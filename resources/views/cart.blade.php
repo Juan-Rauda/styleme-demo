@@ -10,6 +10,13 @@
     <!-- FONT AWESOME -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
+    <!-- THREE JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+
     <style>
         body {
             background-color: #0b0f19 !important;
@@ -107,34 +114,13 @@
             height: 650px;
             position: relative;
             overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
         }
 
-        .mannequin-display {
+        #threeCanvas {
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            position: relative;
-            z-index: 2;
-        }
-
-        .placeholder-icon {
-            font-size: 240px;
-            color: rgba(79, 70, 229, 0.15);
-            text-shadow: 0 0 40px rgba(79, 70, 229, 0.4);
-        }
-
-        .generated-image {
-            max-width: 92%;
-            max-height: 92%;
-            object-fit: contain;
-            border-radius: 12px;
-            box-shadow: 0 0 30px rgba(79, 70, 229, 0.5);
+            display: block;
         }
 
         .laser-scanner-line {
@@ -279,7 +265,7 @@
 
             <div class="catalog-title">
                 <h1>AI Design Studio — StyleMe</h1>
-                <p>Crea, simula en tiempo real y adquiere tus prendas personalizadas</p>
+                <p>Crea diseños IA en una camiseta 3D interactiva</p>
             </div>
 
             <div>
@@ -300,7 +286,6 @@
             </div>
         </div>
 
-        <!-- GRID -->
         <div class="studio-grid">
 
             <!-- PANEL -->
@@ -308,21 +293,17 @@
 
                 <div class="panel-section-title">
                     <i class="fas fa-wand-magic-sparkles"></i>
-                    Parámetros de Generación IA
+                    Generación IA
                 </div>
 
                 <div class="form-group-studio">
-                    <label>
-                        Describe el estampado:
-                    </label>
+                    <label>Describe el estampado</label>
 
                     <textarea id="prompt" class="textarea-studio" placeholder="Ej. Dragon Ball Android 17 anime style"></textarea>
                 </div>
 
                 <div class="form-group-studio">
-                    <label>
-                        Tipo de Prenda:
-                    </label>
+                    <label>Tipo de Prenda</label>
 
                     <select id="tipo_camisa" class="select-studio">
 
@@ -330,28 +311,53 @@
                             Camisa Premium
                         </option>
 
-                        <option value="oversized streetwear t-shirt">
-                            Oversized Streetwear
-                        </option>
+                        {{-- <option value="oversized streetwear t-shirt">
+                            Oversized
+                        </option> --}}
 
                         <option value="black hoodie">
                             Hoodie
                         </option>
 
                     </select>
+                    <div class="form-group-studio">
+                        <label>Color de Prenda</label>
+
+                        <select id="color_camisa" class="select-studio">
+
+                            <option value="#111111">
+                                Negro
+                            </option>
+
+                            <option value="#ffffff">
+                                Blanco
+                            </option>
+
+                            <option value="#dc2626">
+                                Rojo
+                            </option>
+
+                            <option value="#2563eb">
+                                Azul
+                            </option>
+
+                            <option value="#16a34a">
+                                Verde
+                            </option>
+
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group-studio">
-                    <label>
-                        Talla:
-                    </label>
+                    <label>Talla</label>
 
                     <select id="talla" class="select-studio">
 
-                        <option value="S">S</option>
-                        <option value="M" selected>M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
+                        <option>S</option>
+                        <option selected>M</option>
+                        <option>L</option>
+                        <option>XL</option>
 
                     </select>
                 </div>
@@ -359,7 +365,9 @@
                 <button class="btn-studio-generate" onclick="simularGeneracionIA()">
 
                     <i class="fas fa-arrows-spin"></i>
+
                     Generar Diseño
+
                 </button>
 
             </div>
@@ -378,47 +386,43 @@
                         Generando diseño IA...
                     </h5>
 
-                    <p class="text-muted small">
-                        Procesando mockup de ropa
-                    </p>
                 </div>
 
-                <!-- DISPLAY -->
-                <div class="mannequin-display" id="viewportDisplay">
-
-                    <i class="fas fa-shirt placeholder-icon" id="placeholderIcon"></i>
-
-                    <img id="generatedImage" class="generated-image" style="display:none;">
-                </div>
+                <!-- CANVAS -->
+                <canvas id="threeCanvas"></canvas>
 
                 <!-- CONTROLES -->
                 <div class="viewport-overlay-controls">
 
-                    <!-- Bloque Izquierdo: Precio Estimado (Se mantiene igual) -->
                     <div>
-                        <div style="font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase;">
-                            Precio Estimado
+                        <div style="font-size: 11px; color: #94a3b8;">
+                            Precio
                         </div>
+
                         <div class="price-display">
                             $35.00
                         </div>
                     </div>
 
-                    <!-- Bloque Derecho Nuevo: Contenedor flexible que junta la Cantidad y tu Botón -->
-                    <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
 
-                        <!-- Input para seleccionar la cantidad de camisetas -->
-                        <div class="quantity-control-studio" style="display: flex; align-items: center; gap: 6px;">
-                            <label
-                                style="font-size: 11px; color: #94a3b8; font-weight: 700; text-transform: uppercase; margin: 0;">Cant:</label>
-                            <input type="number" id="cantidad_prendas" value="1" min="1" max="99"
-                                style="width: 55px; height: 42px; background-color: #1e293b; border: 1px solid #334155; color: white; padding: 6px; border-radius: 8px; text-align: center; font-weight: 700; outline: none;">
-                        </div>
+                        <input type="number" id="cantidad_prendas" value="1" min="1" max="99"
+                            style="
+                            width:60px;
+                            height:42px;
+                            background:#1e293b;
+                            border:1px solid #334155;
+                            color:white;
+                            border-radius:8px;
+                            text-align:center;
+                        ">
 
-                        <!-- Tu botón original de Añadir al Carrito -->
-                        <button class="btn-studio-checkout" onclick="agregarDisenoAlCarrito()" style="margin: 0;">
+                        <button class="btn-studio-checkout" onclick="agregarDisenoAlCarrito()">
+
                             <i class="fas fa-cart-plus"></i>
-                            Añadir al Carrito
+
+                            Añadir
+
                         </button>
 
                     </div>
@@ -432,10 +436,333 @@
     </div>
 
     <script>
+        let scene;
+        let camera;
+        let renderer;
+        let controls;
+
+        let shirtModel = null;
+
+        let designPlane = null;
+
+        let estampadoY = 0.3;
+        let estampadoZ = 0.13;
+
+        let modelRotationX = 0;
+        let modelRotationY = 0;
+        let modelRotationZ = 0;
+
         var productosSeleccionados =
             JSON.parse(localStorage.getItem('carrito')) || [];
 
-        function simularGeneracionIA() {
+        init3D();
+
+        function init3D() {
+
+            const canvas =
+                document.getElementById('threeCanvas');
+
+            // ESCENA
+            scene =
+                new THREE.Scene();
+
+            // CAMARA
+            camera =
+                new THREE.PerspectiveCamera(
+                    45,
+                    canvas.clientWidth / canvas.clientHeight,
+                    0.1,
+                    1000
+                );
+
+            camera.position.set(
+                0,
+                1,
+                5
+            );
+
+            // RENDER
+            renderer =
+                new THREE.WebGLRenderer({
+                    canvas: canvas,
+                    antialias: true,
+                    alpha: true
+                });
+
+            renderer.setSize(
+                canvas.clientWidth,
+                canvas.clientHeight
+            );
+
+            renderer.setPixelRatio(
+                window.devicePixelRatio
+            );
+
+            renderer.outputEncoding =
+                THREE.sRGBEncoding;
+
+            // CONTROLES
+            controls =
+                new THREE.OrbitControls(
+                    camera,
+                    renderer.domElement
+                );
+
+            controls.enableDamping = true;
+
+            controls.enableZoom = true;
+
+            controls.minDistance = 2;
+
+            controls.maxDistance = 7;
+
+            // AUTO ROTATE
+            // controls.autoRotate = true;
+
+            // controls.autoRotateSpeed = 1;
+
+            // LUCES
+            const ambientLight =
+                new THREE.AmbientLight(
+                    0xffffff,
+                    1.2
+                );
+
+            scene.add(ambientLight);
+
+            const directionalLight =
+                new THREE.DirectionalLight(
+                    0xffffff,
+                    1.2
+                );
+
+            directionalLight.position.set(
+                5,
+                10,
+                7
+            );
+
+            scene.add(directionalLight);
+
+            // CARGAR MODELO
+            cargarModelo();
+
+            animate();
+
+            // CAMBIO DE PRENDA
+            document.getElementById('tipo_camisa')
+                .addEventListener(
+                    'change',
+                    cargarModelo
+                );
+
+            // CAMBIO COLOR
+            document.getElementById('color_camisa')
+                .addEventListener(
+                    'change',
+                    aplicarColorModelo
+                );
+
+            // RESPONSIVE
+            window.addEventListener(
+                'resize',
+                onWindowResize
+            );
+        }
+
+        function cargarModelo() {
+
+            const tipo =
+                document.getElementById('tipo_camisa').value;
+
+            let modelPath = '';
+
+            let modelScale = 4;
+
+            let modelY = -1.5;
+
+            let modelX = 0;
+            let modelZ = 0;
+
+            // CONFIGURACIONES
+            if (tipo === 'premium cotton t-shirt') {
+
+                modelPath = '/models/tshirt.glb';
+
+                // TAMAÑO
+                modelScale = 4;
+
+                // POSICIÓN
+                modelX = 0.04;
+                modelY = -5;
+                modelZ = 0;
+
+                // ROTACIONES
+                modelRotationX = 0.19;
+
+                modelRotationY = 0.5;
+
+                modelRotationZ = -0.04;
+
+                // ESTAMPADO
+                estampadoY = 0.6;
+
+                estampadoZ = 1;
+
+            } else {
+
+                modelPath = '/models/hoodie.glb';
+
+                // TAMAÑO
+                modelScale = 4.5;
+
+                // POSICIÓN
+                modelX = 0;
+                modelY = -4.6;
+                modelZ = 0;
+
+                // ROTACIONES
+                modelRotationX = 0.02;
+
+                modelRotationY = 0;
+
+                modelRotationZ = 0;
+
+                // ESTAMPADO
+                estampadoY = 0.6;
+
+                estampadoZ = 0.7;
+            }
+
+            // ELIMINAR MODELO ANTERIOR
+            if (shirtModel) {
+
+                scene.remove(shirtModel);
+            }
+
+            // ELIMINAR ESTAMPADO
+            if (designPlane) {
+
+                scene.remove(designPlane);
+            }
+
+            const loader =
+                new THREE.GLTFLoader();
+
+            loader.load(
+
+                modelPath,
+
+                function(gltf) {
+
+                    shirtModel =
+                        gltf.scene;
+
+                    // ESCALA
+                    shirtModel.scale.set(
+                        modelScale,
+                        modelScale,
+                        modelScale
+                    );
+
+                    // POSICION
+                    shirtModel.position.set(
+                        modelX,
+                        modelY,
+                        modelZ
+                    );
+
+                    // ROTACION
+                    shirtModel.rotation.set(
+                        modelRotationX,
+                        modelRotationY,
+                        modelRotationZ
+                    );
+
+                    // MATERIALES
+                    shirtModel.traverse(function(child) {
+
+                        if (child.isMesh) {
+
+                            child.material =
+                                new THREE.MeshStandardMaterial({
+
+                                    color: document.getElementById('color_camisa').value,
+
+                                    roughness: 0.8,
+
+                                    metalness: 0.1
+                                });
+
+                            child.castShadow = true;
+
+                            child.receiveShadow = true;
+                        }
+                    });
+
+                    scene.add(shirtModel);
+                },
+
+                undefined,
+
+                function(error) {
+
+                    console.log(error);
+
+                    Swal.fire(
+                        'Error',
+                        'No se pudo cargar el modelo 3D',
+                        'error'
+                    );
+                }
+            );
+        }
+
+        function aplicarColorModelo() {
+
+            if (!shirtModel) return;
+
+            const color =
+                document.getElementById('color_camisa').value;
+
+            shirtModel.traverse(function(child) {
+
+                if (child.isMesh) {
+
+                    child.material.color.set(color);
+                }
+            });
+        }
+
+        function onWindowResize() {
+
+            const canvas =
+                document.getElementById('threeCanvas');
+
+            camera.aspect =
+                canvas.clientWidth / canvas.clientHeight;
+
+            camera.updateProjectionMatrix();
+
+            renderer.setSize(
+                canvas.clientWidth,
+                canvas.clientHeight
+            );
+        }
+
+        function animate() {
+
+            requestAnimationFrame(animate);
+
+            controls.update();
+
+            renderer.render(
+                scene,
+                camera
+            );
+        }
+
+        async function simularGeneracionIA() {
 
             var promptInput =
                 document.getElementById('prompt').value;
@@ -444,7 +771,7 @@
 
                 Swal.fire(
                     'Diseño IA',
-                    'Por favor escribe un diseño.',
+                    'Escribe un diseño.',
                     'info'
                 );
 
@@ -454,162 +781,302 @@
             var loading =
                 document.getElementById('loadingAi');
 
-            var generatedImage =
-                document.getElementById('generatedImage');
-
-            var placeholderIcon =
-                document.getElementById('placeholderIcon');
-
             loading.classList.add('active');
 
-            var tipoPrenda =
-                document.getElementById('tipo_camisa').value;
-
-            // PROMPT ULTRA ESTRICTO
             var finalPrompt = `
-front view of a ${tipoPrenda},
+${promptInput},
 
-plain black fabric,
+anime print design,
 
-minimalist fashion mockup,
+graphic design only,
 
-realistic clothing folds,
+centered artwork,
 
-centered apparel product photography,
-
-studio lighting,
+high detail,
 
 white background,
 
-the shirt contains ONLY a printed graphic design of:
+no mockup,
 
-${promptInput},
-
-anime print style,
-
-the print must stay inside the shirt area,
-
-high detail print,
-
-screen printing style,
-
-fashion ecommerce mockup,
-
-realistic t-shirt texture,
-
-no extra characters outside the shirt,
-
-no scene,
-
-no background objects,
-
-clean clothing catalog photo,
-
-professional clothing mockup,
-
-isolated apparel product,
-
-ultra realistic fashion photography
+no shirt
 `;
 
             var cleanPrompt =
                 encodeURIComponent(finalPrompt);
 
-            // MÁS RÁPIDO QUE FLUX
             var imageUrl =
-                `https://image.pollinations.ai/prompt/${cleanPrompt}?model=turbo&width=768&height=768&enhance=true`;
+                `https://image.pollinations.ai/prompt/${cleanPrompt}?width=768&height=768&model=turbo`;
 
-            console.log(imageUrl);
+            const img =
+                new Image();
 
-            var imgTester = new Image();
+            img.crossOrigin =
+                "anonymous";
 
-            imgTester.src = imageUrl;
+            img.src =
+                imageUrl;
 
-            imgTester.onload = function() {
+            img.onload = function() {
+
+                // CANVAS
+                const canvasTexture =
+                    document.createElement('canvas');
+
+                canvasTexture.width =
+                    img.width;
+
+                canvasTexture.height =
+                    img.height;
+
+                const ctx =
+                    canvasTexture.getContext('2d');
+
+                ctx.drawImage(
+                    img,
+                    0,
+                    0
+                );
+
+                const imageData =
+                    ctx.getImageData(
+                        0,
+                        0,
+                        canvasTexture.width,
+                        canvasTexture.height
+                    );
+
+                const data =
+                    imageData.data;
+
+                const width =
+                    canvasTexture.width;
+
+                const height =
+                    canvasTexture.height;
+
+                const borderIndex = 0;
+
+                const borderR =
+                    data[borderIndex];
+
+                const borderG =
+                    data[borderIndex + 1];
+
+                const borderB =
+                    data[borderIndex + 2];
+
+                const tolerance = 80;
+
+                const visited =
+                    new Uint8Array(width * height);
+
+                const queue = [];
+
+                // BORDES
+                for (let x = 0; x < width; x++) {
+
+                    queue.push([x, 0]);
+                    queue.push([x, height - 1]);
+                }
+
+                for (let y = 0; y < height; y++) {
+
+                    queue.push([0, y]);
+                    queue.push([width - 1, y]);
+                }
+
+                // FLOOD FILL
+                while (queue.length > 0) {
+
+                    const [x, y] = queue.shift();
+
+                    if (
+                        x < 0 ||
+                        y < 0 ||
+                        x >= width ||
+                        y >= height
+                    ) {
+                        continue;
+                    }
+
+                    const visitedIndex =
+                        y * width + x;
+
+                    if (visited[visitedIndex]) {
+                        continue;
+                    }
+
+                    visited[visitedIndex] = 1;
+
+                    const index =
+                        visitedIndex * 4;
+
+                    const r = data[index];
+                    const g = data[index + 1];
+                    const b = data[index + 2];
+
+                    const diff =
+                        Math.abs(r - borderR) +
+                        Math.abs(g - borderG) +
+                        Math.abs(b - borderB);
+
+                    if (diff < tolerance) {
+
+                        data[index + 3] = 0;
+
+                        queue.push([x + 1, y]);
+                        queue.push([x - 1, y]);
+                        queue.push([x, y + 1]);
+                        queue.push([x, y - 1]);
+                    }
+                }
+
+                ctx.putImageData(
+                    imageData,
+                    0,
+                    0
+                );
+
+                const texture =
+                    new THREE.CanvasTexture(
+                        canvasTexture
+                    );
+
+                texture.needsUpdate = true;
+
+                texture.minFilter =
+                    THREE.LinearFilter;
+
+                texture.magFilter =
+                    THREE.LinearFilter;
+
+                // ELIMINAR ESTAMPADO
+                if (designPlane) {
+
+                    scene.remove(designPlane);
+                }
+
+                // ESTAMPADO
+                const designGeometry =
+                    new THREE.PlaneGeometry(
+                        1.0,
+                        1.0
+                    );
+
+                const designMaterial =
+                    new THREE.MeshBasicMaterial({
+
+                        map: texture,
+
+                        transparent: true
+                    });
+
+                designPlane =
+                    new THREE.Mesh(
+                        designGeometry,
+                        designMaterial
+                    );
+
+                // POSICION DINAMICA
+                designPlane.position.set(
+                    0,
+                    estampadoY,
+                    estampadoZ
+                );
+
+                scene.add(designPlane);
+
+                window.generatedDesign =
+                    canvasTexture.toDataURL("image/png");
 
                 loading.classList.remove('active');
 
-                generatedImage.src = imageUrl;
-
-                generatedImage.style.display = 'block';
-
-                placeholderIcon.style.display = 'none';
-
                 Swal.fire({
                     icon: 'success',
-                    title: '¡Diseño generado!',
-                    text: 'La IA creó el mockup correctamente.',
-                    timer: 2200,
+                    title: 'Diseño generado',
+                    text: 'Diseño aplicado correctamente',
+                    timer: 2000,
                     showConfirmButton: false
                 });
             };
 
-            imgTester.onerror = function() {
+            img.onerror = function() {
 
                 loading.classList.remove('active');
 
                 Swal.fire(
                     'Error',
-                    'No se pudo generar la imagen.',
+                    'No se pudo generar la imagen',
                     'error'
                 );
             };
         }
 
         function agregarDisenoAlCarrito() {
-            var prompt = document.getElementById('prompt').value;
-            var tipoPrenda = document.getElementById('tipo_camisa').value;
-            var talla = document.getElementById('talla').value;
-            var generatedImage = document.getElementById('generatedImage');
 
-            // CAPTURAR LA CANTIDAD SELECCIONADA
-            var cantidadInput = document.getElementById('cantidad_prendas');
-            var cantidadSeleccionada = cantidadInput ? parseInt(cantidadInput.value) : 1;
+            var prompt =
+                document.getElementById('prompt').value;
 
-            // Validación básica por si ponen números negativos o vacíos
-            if (isNaN(cantidadSeleccionada) || cantidadSeleccionada < 1) {
-                cantidadSeleccionada = 1;
-            }
+            var tipoPrenda =
+                document.getElementById('tipo_camisa').value;
 
-            if (!prompt.trim() || generatedImage.style.display === 'none' || !generatedImage.src) {
+            var talla =
+                document.getElementById('talla').value;
+
+            var color =
+                document.getElementById('color_camisa').value;
+
+            var cantidad =
+                parseInt(
+                    document.getElementById('cantidad_prendas').value
+                );
+
+            if (!window.generatedDesign) {
+
                 Swal.fire(
                     'Diseño IA',
-                    'Debes escribir un prompt y presionar "Generar Diseño" antes de añadir al carrito.',
+                    'Primero genera un diseño.',
                     'warning'
                 );
+
                 return;
             }
 
             var itemDiseno = {
+
                 id: Date.now(),
-                nombre: "Diseño IA (" + tipoPrenda + " - " + talla + ")",
+
+                nombre: "Diseño IA",
+
+                tipoPrenda: tipoPrenda,
+
+                talla: talla,
+
+                color: color,
+
                 precio: 35.00,
-                cantidad: cantidadSeleccionada, // <--- AHORA USA EL NÚMERO DEL INPUT
-                imagen: generatedImage.src
+
+                cantidad: cantidad,
+
+                imagen: window.generatedDesign,
+
+                prompt: prompt
             };
 
-            // Buscar si el producto idéntico ya estaba en el carrito
-            var productoExistente = productosSeleccionados.find(item =>
-                item.nombre === itemDiseno.nombre && item.imagen === itemDiseno.imagen
+            productosSeleccionados.push(
+                itemDiseno
             );
 
-            if (productoExistente) {
-                // En lugar de sumar 1, sumamos la cantidad que eligió el usuario
-                productoExistente.cantidad += cantidadSeleccionada;
-            } else {
-                productosSeleccionados.push(itemDiseno);
-            }
+            localStorage.setItem(
+                'carrito',
+                JSON.stringify(productosSeleccionados)
+            );
 
-            localStorage.setItem('carrito', JSON.stringify(productosSeleccionados));
             actualizarCantidadCarrito();
-
-            // Reiniciar el input a 1 tras agregar con éxito
-            if (cantidadInput) cantidadInput.value = 1;
 
             Swal.fire({
                 icon: 'success',
-                title: '¡Agregado al carrito!',
-                text: `Se añadieron ${cantidadSeleccionada} unidades correctamente.`,
+                title: 'Agregado al carrito',
                 timer: 1800,
                 showConfirmButton: false
             });
@@ -618,22 +1085,20 @@ ultra realistic fashion photography
         function actualizarCantidadCarrito() {
 
             var carrito =
-                JSON.parse(localStorage.getItem('carrito')) || [];
+                JSON.parse(
+                    localStorage.getItem('carrito')
+                ) || [];
 
-            var totalCantidad = 0;
+            var total = 0;
 
             carrito.forEach(function(item) {
 
-                totalCantidad += item.cantidad;
+                total += item.cantidad;
             });
 
-            var element =
-                document.getElementById('carritoCantidad');
-
-            if (element) {
-
-                element.textContent = totalCantidad;
-            }
+            document.getElementById(
+                'carritoCantidad'
+            ).textContent = total;
         }
 
         function verCarrito() {
